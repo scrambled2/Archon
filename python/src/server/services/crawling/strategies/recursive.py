@@ -7,7 +7,7 @@ Handles recursive crawling of websites by following internal links.
 import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
-from urllib.parse import urldefrag
+from urllib.parse import urldefrag, urljoin
 
 from crawl4ai import CacheMode, CrawlerRunConfig, MemoryAdaptiveDispatcher
 
@@ -300,7 +300,11 @@ class RecursiveCrawlStrategy:
                         # Find internal links for next depth
                         links = getattr(result, "links", {}) or {}
                         for link in links.get("internal", []):
-                            next_url = normalize_url(link["href"])
+                            # Resolve relative URLs against the page URL (crawl4ai sometimes returns relative hrefs)
+                            href = link["href"]
+                            if not href.startswith(('http://', 'https://')):
+                                href = urljoin(result.url, href)
+                            next_url = normalize_url(href)
                             # Skip binary files and already visited URLs
                             is_binary = self.url_handler.is_binary_file(next_url)
                             if next_url not in visited and not is_binary:
